@@ -1,4 +1,5 @@
 import random
+import time
 
 # Object used to create new boards
 
@@ -192,16 +193,14 @@ class Game:
                 tiles_to_flip = board_instance.is_legal_move(
                     x_pos, y_pos, color)
                 if not tiles_to_flip:
-                    print("Invalid move")
+                    print("Invalid move for " + color)
                 else:
                     board_instance.board[(x_pos) + y_pos * 8].content = color
                     board_instance.flip_tiles(
                         x_pos, y_pos, tiles_to_flip, color)
-                    print(f"Pion placé en {x_pos}, {y_pos}")
                     self.update_score(board_instance)
                     self.change_active_player()
                     self.check_for_valid_moves(board_instance)
-                    board_instance.draw_board("Content")
             else:
                 print("There is already a pawn here")
 
@@ -210,10 +209,8 @@ class Game:
         # Prend self.active_player et change la couleur du joueur actif
         if self.active_player == "⚫":
             self.active_player = "⚪"
-            print("C'est au tour du joueur blanc")
         else:
             self.active_player = "⚫"
-            print("C'est au tour du joueur noir")
             
         self.turn += 1
 
@@ -258,48 +255,55 @@ class Game:
 
     # Compare the score, and print the winner's color
     def check_for_winner(self):
-        print("Partie terminée !")
-        print("Le joueur noir a: " + str(self.score_black) + " points")
-        print("Le joueur white a: " + str(self.score_white) + " points")
         if (self.score_black > self.score_white):
-            print("Le joueur noir a gagné !")
             self.winner = "⚫"
         elif (self.score_white > self.score_black):
-            print("Le joueur blanc a gagné !")
             self.winner = "⚪"
-        else:
-            print("Égalité !")
-
 
 class Bot:
     def __init__(self):
-        self.name = "Name of your Bot"
+        self.name = "OthelloBot"
 
     # BOT FUNCTIONS
-
     def check_valid_moves(self, board, oth_game):
-        Matrix = [
-    [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7)],
-    [(1, 0), (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7)],
-    [(2, 0), (2, 1), (2, 2), (2, 3), (2, 4), (2, 5), (2, 6), (2, 7)],
-    [(3, 0), (3, 1), (3, 2), '⚪', '⚫', (3, 5), (3, 6), (3, 7)],
-    [(4, 0), (4, 1), (4, 2), '⚫', '⚪', (4, 5), (4, 6), (4, 7)],
-    [(5, 0), (5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6), (5, 7)],
-    [(6, 0), (6, 1), (6, 2), (6, 3), (6, 4), (6, 5), (6, 6), (6, 7)],
-    [(7, 0), (7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7)],
-]
+        # Poids des cases
+        SQUARE_WEIGHTS = [
+            120, -20,  20,   5,   5,  20, -20, 120,
+            -20, -40,  -5,  -5,  -5,  -5, -40, -20,
+            20,  -5,  15,   3,   3,  15,  -5,  20,
+            5,  -5,   3,   3,   3,   3,  -5,   5,
+            5,  -5,   3,   3,   3,   3,  -5,   5,
+            20,  -5,  15,   3,   3,  15,  -5,  20,
+            -20, -40,  -5,  -5,  -5,  -5, -40, -20,
+            120, -20,  20,   5,   5,  20, -20, 120,
+        ]
         valid_moves = []
+        
+        # Parcourir le plateau pour vérifier les coups valides
         for tile in board.board:
-            if tile.content == "🟩":
+            if tile.content == "🟩":  # Si la case est vide
                 tiles_to_flip = board.is_legal_move(tile.x_pos, tile.y_pos, oth_game.active_player)
                 if tiles_to_flip:
-                    score = sum([flip[0] for flip in tiles_to_flip])
-                    valid_moves.append((score, [tile.x_pos, tile.y_pos]))
+                    # Calculer le score basé sur le nombre de pions retournés et la position
+                    score = sum([flip[0] for flip in tiles_to_flip])  # Score basé sur les pions retournés
+                    
+                    # Ajouter l'impact de la position sur le plateau via la matrice SQUARE_WEIGHTS
+                    position_score = SQUARE_WEIGHTS[tile.y_pos * 8 + tile.x_pos]
+                    total_score = score + position_score  # Ajouter le score de la position
+                    
+                    valid_moves.append((total_score, [tile.x_pos, tile.y_pos]))
+        
+        # Si des coups sont valides, choisir le meilleur coup
         if valid_moves:
-            best_move = max(valid_moves, key=lambda x: x[0])
+            # Ajouter un peu de chance pour rendre le bot moins prédictible
+            if random.random() < 0.9:  # 90% de chance de choisir le meilleur coup
+                best_move = max(valid_moves, key=lambda x: x[0])
+            else:
+                best_move = random.choice(valid_moves)  # Choisir un coup aléatoire pour l'incertitude
             return best_move[1]
         else:
             return None
+
         # placer le pion à coté de deux pions adverses dans le cas contraire, placer le pion idéalement à coté d'un pion adverse'
         # print("Il faut récupérer toutes les cases du tableau")
         # print("Vérifier quels coups sont jouables")
@@ -320,18 +324,66 @@ myBot = Bot()
 otherBot = Bot()
 
 # Loop until the game is over
-while not othello_game.is_game_over:
-    # First player / bot logic goes here
-    if (othello_game.active_player == "⚫"):
-        move_coordinates = [0, 0]
-        move_coordinates = myBot.check_valid_moves(othello_board, othello_game)
-        othello_game.place_pawn(
-            move_coordinates[0], move_coordinates[1], othello_board, othello_game.active_player)
+def play_games(number_of_games, timeout_value):
+    white_victories = 0
+    black_victories = 0
+    white_win_icons = ""
+    black_win_icons = ""
+    
+    for current_game in range(number_of_games):
 
-    # Second player / bot logic goes here
-    else:
-        move_coordinates = [0, 0]
-        move_coordinates[0] = int(input("Coordonnées en X: "))
-        move_coordinates[1] = int(input("Coordonnées en Y: "))
-        othello_game.place_pawn(
-            move_coordinates[0], move_coordinates[1], othello_board, othello_game.active_player)
+        timeout = time.time() + timeout_value
+
+        # Create a new board & a new game instances
+        othello_board = Board(8)
+        othello_game = Game()
+
+        # Fill the board with tiles
+        othello_board.create_board()
+
+        # Create 2 bots
+        myBot = Bot()
+        otherBot = Bot()
+
+        while not othello_game.is_game_over:
+
+            if(time.time() > timeout):
+                othello_game.check_for_winner()
+                othello_game.is_game_over = True
+                print("Player " + othello_game.active_player + " caused a Timeout")
+                break
+
+            # First player / bot logic goes here
+            if(othello_game.active_player == "⚫"):
+                move_coordinates = [0, 0]
+                move_coordinates = myBot.check_valid_moves(othello_board, othello_game)
+                # move_coordinates[1] = int(input("Coordonnées en Y: "))
+                othello_game.place_pawn(
+                move_coordinates[0], move_coordinates[1], othello_board, othello_game.active_player)
+
+
+            # Second player / bot logic goes here
+            else:
+                move_coordinates = [0, 0]
+                move_coordinates = myBot.check_valid_moves(othello_board, othello_game)
+                # move_coordinates[1] = int(input("Coordonnées en Y: "))
+                othello_game.place_pawn(
+                move_coordinates[0], move_coordinates[1], othello_board, othello_game.active_player)
+        
+        if(othello_game.winner == "⚫"):
+            black_win_icons += "⚫"
+            black_victories += 1
+        elif(othello_game.winner == "⚪"):
+            white_win_icons += "⚪"
+            white_victories += 1
+        
+        print(black_win_icons)
+        print(white_win_icons)
+        
+    
+    print("End of the games, showing scores: ")
+    print("Black player won " + str(black_victories) + " times")
+    print("White player won " + str(white_victories) + " times")
+        
+
+play_games(100, 0.8)
